@@ -1,6 +1,8 @@
 package com.main.myapplication;
 
 import android.nfc.tech.IsoDep;
+import android.nfc.tech.NfcB;
+import android.widget.Toast;
 
 import java.io.IOException;
 
@@ -20,6 +22,7 @@ public class IsoDepTransceiver implements Runnable {
     private OnMessageReceived onMessageReceived;
     private byte[] select_apdu;
     private byte[] readrecord_apdu;
+    private NfcB tarjeta;
 
     public IsoDepTransceiver(IsoDep isoDep, OnMessageReceived onMessageReceived) {
         this.isoDep = isoDep;
@@ -36,8 +39,14 @@ public class IsoDepTransceiver implements Runnable {
         onMessageReceived.clearmessages();
         try{
             System.out.println("Leyendo");
-            isoDep.close();
             isoDep.connect();
+            System.out.println("tag"+isoDep.getTag().toString());
+            System.out.println("id "+isoDep.getTag().getId());
+            System.out.println(isoDep.transceive(readrecord_apdu));
+            System.out.println("read   "+readrecord_apdu);
+
+
+
         }
         catch(IOException e)
         {
@@ -49,12 +58,11 @@ public class IsoDepTransceiver implements Runnable {
             try {
                 byte[] response = new byte[0];
                 isoDep.transceive(select_apdu);
-                System.out.println("Leyendo2");
                 response = isoDep.transceive(readrecord_apdu);
                 if (response != null) {
                     byte contractcounters;
-                    for (int i = 0; (i*3)+3 < response.length -1; i++) {
-                        contractcounters = (byte) (response[(i * 3)] + response[(i * 3) + 1] + response[(i * 3) + 2]);
+                    for (int i = 0; i < response.length -3; i+=3) {
+                        contractcounters = (byte) (response[(i)] + response[i + 1] + response[i+ 2]);
                         if (contractcounters > 0) {
                             byte[] message = ("Ticket " + (i + 1) + ": ").getBytes();
                             byte[] ridesleftmsg = " rides left.".getBytes();
@@ -66,7 +74,10 @@ public class IsoDepTransceiver implements Runnable {
                             logmessage[message.length] = currentcounterbytes[0];
                             logmessage[message.length + 1] = currentcounterbytes[1];
                             System.arraycopy(ridesleftmsg, 0, logmessage, message.length + 2, ridesleftmsg.length);
+                            System.out.println("Mensaje");
+                            System.out.println(logmessage.toString());
                             onMessageReceived.onMessage(logmessage);
+                        }else{
                         }
                     }
                 }
